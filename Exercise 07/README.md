@@ -22,7 +22,7 @@ This assignment deepened my understanding of stack-based virtual machines and th
   <ol align="left">
     <li>Clone this repository using <code>git clone &lt;url&gt;</code></li>
     <li>Open the cloned project in your IDE</li>
-    <li>Use python Main.py <target_vm_file/folder> to translate your VM code into Assembly code</li>
+    <li>Use <code>python Main.py &lt;target_vm_file/folder&gt;</code> to translate your VM code into Assembly code</li>
   </ol>
 </div>
 
