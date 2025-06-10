@@ -8,7 +8,7 @@ In this exercise, I explored the principles of sequential logic by implementing 
 <br>
 Unlike combinational logic, these components preserve information over time and are essential for enabling stateful behavior in digital systems, forming the basis of computer memory and storage.
 <br><br>
-    <a href="https://github.com/ShayMorad/Intro-To-CS"><strong>« Return to Main Repository</strong></a>
+    <a href="https://github.com/ShayMorad/Nand2Tetris"><strong>« Return to Main Repository</strong></a>
     <br>
   </p>
 </div>
