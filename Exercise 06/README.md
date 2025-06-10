@@ -22,7 +22,7 @@ This assignment provided a deep understanding of low-level programming and how h
   <ol align="left">
     <li>Clone this repository using <code>git clone &lt;url&gt;</code></li>
     <li>Open the cloned project in your IDE</li>
-    <li>Use python Main.py <target_asm_file> to translate your Assembly code into Machine code</li>
+    <li>Use <code>python Main.py &lt;target_vm_file/folder&gt;</code> to translate your VM code into Assembly code</li>
   </ol>
 </div>
 
