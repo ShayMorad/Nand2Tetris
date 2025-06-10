@@ -1,0 +1,61 @@
+// This file is part of nand2tetris, as taught in The Hebrew University, and
+// was written by Aviv Yaish. It is an extension to the specifications given
+// [here](https://www.nand2tetris.org) (Shimon Schocken and Noam Nisan, 2017),
+// as allowed by the Creative Common Attribution-NonCommercial-ShareAlike 3.0
+// Unported [License](https://creativecommons.org/licenses/by-nc-sa/3.0/).
+
+
+// The ExtendAlu chip is an extension of the standard ALU which also supports
+// shift operations.
+// The inputs of the extended ALU are instruction[9], x[16], y[16].
+// The "ng" and "zr" output pins behave the same as in the regular ALU.
+// The "out" output is defined as follows:
+// If instruction[8]=1 and instruction[7]=1 the output is identical to the 
+// regular ALU, where:
+// instruction[5]=zx, instruction[4]=nx, ..., instruction[0]=no
+// Else, if instruction[8]=0 and instruction[7]=1, the output is a shift:
+// - If instruction[4] == 0, the input "y" will be shifted, otherwise "x".
+// - If instruction[5] == 0, the shift will be a right-shift, otherwise left.
+// - All other inputs are undefined.
+
+CHIP ExtendAlu {
+     IN x[16], y[16], instruction[9];
+     OUT out[16], zr, ng;
+     
+     PARTS:
+     // check if regular ALU or ExtendALU
+     And(a=instruction[8], b=instruction[7], out=ALUcheck);
+
+     // compute regular ALU outputs
+     ALU(x=x, y=y, zx=instruction[5], nx=instruction[4], zy=instruction[3], ny=instruction[2], f=instruction[1], no=instruction[0], out=ALUout, zr=ALUzr, ng=ALUng);
+
+     //Not(in=instruction[8],out=not8);       // may use if instructions are more clear about other inputs for instructions[8]/[7]
+     //And(a=not8,b=instruction[7],out=use)
+
+     // ExtendALU computations and output, based on the regular ALU output
+     Not(in=instruction[4], out=xysel);
+     Mux16(a=x, b=y, sel=xysel, out=xMUXy);
+     ShiftLeft(in=xMUXy, out=xMUXyShiftedLeft);
+     ShiftRight(in=xMUXy, out=xMUXyShiftedRight);
+     Mux16(a=xMUXyShiftedRight, b=xMUXyShiftedLeft, sel=instruction[5], out=ExtendALUout);
+
+     // ExtendALUout ZR NG
+
+     // NG
+     Not16(in=ExtendALUout, out=notExtendALUout);
+     Not16(in=notExtendALUout, out[0..7]=firsthalfZR, out[8..15]=secondhalfZR,out[15]=ExtendALUNG);
+
+     // ZR
+     Or8Way(in=firsthalfZR, out=ZRorfirst); 
+     Or8Way(in=secondhalfZR, out=ZRorsecond);
+     Or(a=ZRorfirst, b=ZRorsecond, out=ZRcheck);    
+     Mux(a=true, b=false, sel=ZRcheck, out=ExtendALUZR);
+
+
+     // return ALU or ExtendALU
+     Mux16(a=ExtendALUout, b=ALUout, sel=ALUcheck, out=out);
+     Mux(a=ExtendALUNG, b=ALUng, sel=ALUcheck, out=ng);
+     Mux(a=ExtendALUZR, b=ALUzr, sel=ALUcheck, out=zr);
+     
+
+}

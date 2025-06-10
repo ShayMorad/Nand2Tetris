@@ -1,0 +1,98 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/CPU.hdl
+
+/**
+ * The Hack CPU (Central Processing unit), consisting of an ALU,
+ * two registers named A and D, and a program counter named PC.
+ * The CPU is designed to fetch and execute instructions written in 
+ * the Hack machine language. In particular, functions as follows:
+ * Executes the inputted instruction according to the Hack machine 
+ * language specification. The D and A in the language specification
+ * refer to CPU-resident registers, while M refers to the external
+ * memory location addressed by A, i.e. to Memory[A]. The inM input 
+ * holds the value of this location. If the current instruction needs 
+ * to write a value to M, the value is placed in outM, the address 
+ * of the target location is placed in the addressM output, and the 
+ * writeM control bit is asserted. (When writeM==0, any value may 
+ * appear in outM). The outM and writeM outputs are combinational: 
+ * they are affected instantaneously by the execution of the current 
+ * instruction. The addressM and pc outputs are clocked: although they 
+ * are affected by the execution of the current instruction, they commit 
+ * to their new values only in the next time step. If reset==1 then the 
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
+ * than to the address resulting from executing the current instruction. 
+ */
+
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+    //load pc by either jumping, incrementing by 1 or resetting
+    PC(in=A, load=JUMPif1, inc=true, reset=reset, out[0..14]=pc, out[15]=false);
+    
+    // check if instruction is C type or A type
+    Not(in=instruction[15], out=isAinstruction);
+    // choose in Mux if to use a new instruction or ALUoutput
+    Mux16(a=ALUoutput,b=instruction,sel=isAinstruction,out=ALUoutputORinstructionfromROM);
+
+    // check (/and load) if we need to load A either by an A instruction ('@xxx') or as a part of a C instruction (5th bit of the C instruction)
+    Or(a=isAinstruction,b=instruction[5],out=checkAload);
+    ARegister(in=ALUoutputORinstructionfromROM,load=checkAload,out=A ,out[0..14]=addressM);
+
+    // check if ALU needed to load by A or inM
+    Not(in=isAinstruction, out=isNotAInstruction);
+    And(a=instruction[12], b=isNotAInstruction, out=AM);
+    Mux16(a=A ,b=inM ,sel=AM ,out=MmuxA);
+
+    // load ALU
+    ALU(x=D,y=MmuxA,zx=instruction[11],nx=instruction[10],zy=instruction[9],ny=instruction[8],f=instruction[7],no=instruction[6],out=ALUoutput,out=outM,zr=zr,ng=ng);
+
+    // check if load D by C instruction and if so then load D
+    And(a=instruction[15],b=instruction[4],out=checkloadD);
+    DRegister(in=ALUoutput,load=checkloadD,out=D);
+
+    // check if load writeM by C instruction and control bit 
+    And(a=instruction[15],b=instruction[3],out=writeM);
+
+    // prepare ground for jump checks
+    // if (out < 0)  ng = 1
+    // if (out == 0)  zr = 1
+    Not(in=zr,out=nzr); //nzr == 1 if out != 0
+    Not(in=ng,out=nng); 
+
+    // JEQ check, if is C instruction & j2 == 1 then jeq == 1
+    And(a=instruction[15],b=instruction[1],out=jeq);
+    // JEQcheck == 1 if zr == 0 which means output is 0 AND jeq was requested by instruction and jump control bits
+    And(a=jeq,b=zr,out=JEQcheck);
+
+    // JGT check, if is C instruction & j3 == 1 then jgt == 1
+    And(a=instruction[15],b=instruction[0],out=jgt);    
+    // this checks if the output is greater than 0 because: 
+    // if nng == 1 then that means ng == 0 which means the output is NOT <0, and
+    // if nzr == 1 then that means zr == 0 which means the output is NOT =0,
+    // therefore if you combine both logics and they're both 1 then that means the output is >0.                                                 
+    And(a=nng,b=nzr,out=nngnzr);
+    And(a=jgt,b=nngnzr,out=JGTcheck);
+    
+    // same logic as mentioned above for JGT and JEQ...
+    And(a=instruction[15],b=instruction[2],out=jlt);
+    And(a=jlt,b=ng,out=JLTcheck);
+
+    // check if any jump is required
+    Or(a=JGTcheck, b=JEQcheck, out=JGTJEQcheck);
+    Or(a=JGTJEQcheck, b=JLTcheck, out=JUMPif1);
+    
+    
+}

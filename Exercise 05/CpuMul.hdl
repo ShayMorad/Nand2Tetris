@@ -1,0 +1,96 @@
+
+// This file is part of nand2tetris, as taught in The Hebrew University, and
+// was written by Aviv Yaish. It is an extension to the specifications given
+// [here](https://www.nand2tetris.org) (Shimon Schocken and Noam Nisan, 2017),
+// as allowed by the Creative Common Attribution-NonCommercial-ShareAlike 3.0
+// Unported [License](https://creativecommons.org/licenses/by-nc-sa/3.0/).
+
+// This chip is an extension of the regular CPU that uses the extended ALU.
+// If instruction[15]==0 or (instruction[14]==1 and instruction[13]==1),
+// then CpuMul behaves exactly the same as the regular CPU.
+// If instruction[15]==1 and instruction[14]==0 the chip will behave as follows:
+// | Instruction           | 15 | 14 | 13 | a | c1 | c2 | c3 | c4 | c5 | c6 |
+// |-----------------------|:--:|:--:|:--:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
+// | Regular a-instruction |  0 |  * |  * | * |  * |  * |  * |  * |  * |  * |
+// | Regular c-instruction |  1 |  1 |  1 | * |  * |  * |  * |  * |  * |  * |
+// | dest=A<<;jump         |  1 |  0 |  1 | 0 |  1 |  0 |  0 |  0 |  0 |  0 |
+// | dest=D<<;jump         |  1 |  0 |  1 | 0 |  1 |  1 |  0 |  0 |  0 |  0 |
+// | dest=M<<;jump         |  1 |  0 |  1 | 1 |  1 |  0 |  0 |  0 |  0 |  0 |
+// | dest=A>>;jump         |  1 |  0 |  1 | 0 |  0 |  0 |  0 |  0 |  0 |  0 |
+// | dest=D>>;jump         |  1 |  0 |  1 | 0 |  0 |  1 |  0 |  0 |  0 |  0 |
+// | dest=M>>;jump         |  1 |  0 |  1 | 1 |  0 |  0 |  0 |  0 |  0 |  0 |
+// Where:
+// - "<<" is a left shift, and ">>" is a right shift, as defined in project 2.
+//   These notations were chosen because they are used in real programming
+//   languages.
+// - dest and jump can take the same values as in the regular CPU.
+
+CHIP CpuMul {
+    IN  
+        inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset=1) or continue executing
+                         // the current program (reset=0).
+    OUT 
+        outM[16],        // M value output
+        writeM,          // Write into M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+    
+    PARTS:
+    //load pc by either jumping, incrementing by 1 or resetting
+    PC(in=A, load=JUMPif1, inc=true, reset=reset, out[0..14]=pc, out[15]=false);
+    
+    // check if instruction is C type or A type
+    Not(in=instruction[15], out=isAinstruction);
+    // choose in Mux if to use a new instruction or ExtendALUoutput
+    Mux16(a=ExtendALUoutput,b=instruction,sel=isAinstruction,out=ExtendALUoutputORinstructionfromROM);
+
+    // check (/and load) if we need to load A either by an A instruction ('@xxx') or as a part of a C instruction (5th bit of the C instruction)
+    Or(a=isAinstruction,b=instruction[5],out=checkAload);
+    ARegister(in=ExtendALUoutputORinstructionfromROM,load=checkAload,out=A ,out[0..14]=addressM);
+
+    // check if ExtendALU needed to load by A or inM
+    Not(in=isAinstruction, out=isNotAInstruction);
+    And(a=instruction[12], b=isNotAInstruction, out=AM);
+    Mux16(a=A ,b=inM ,sel=AM ,out=MmuxA);
+
+    // load ExtendALU
+    ExtendAlu(x=D,y=MmuxA,instruction=instruction[6..14],out=ExtendALUoutput,out=outM,zr=zr,ng=ng);
+
+    // check if load D by C instruction and if so then load D
+    And(a=instruction[15],b=instruction[4],out=checkloadD);
+    DRegister(in=ExtendALUoutput,load=checkloadD,out=D);
+
+    // check if load writeM by C instruction and control bit 
+    And(a=instruction[15],b=instruction[3],out=writeM);
+
+    // prepare ground for jump checks
+    // if (out < 0)  ng = 1
+    // if (out == 0)  zr = 1
+    Not(in=zr,out=nzr); //nzr == 1 if out != 0
+    Not(in=ng,out=nng); 
+
+    // JEQ check, if is C instruction & j2 == 1 then jeq == 1
+    And(a=instruction[15],b=instruction[1],out=jeq);
+    // JEQcheck == 1 if zr == 0 which means output is 0 AND jeq was requested by instruction and jump control bits
+    And(a=jeq,b=zr,out=JEQcheck);
+
+    // JGT check, if is C instruction & j3 == 1 then jgt == 1
+    And(a=instruction[15],b=instruction[0],out=jgt);    
+    // this checks if the output is greater than 0 because: 
+    // if nng == 1 then that means ng == 0 which means the output is NOT <0, and
+    // if nzr == 1 then that means zr == 0 which means the output is NOT =0,
+    // therefore if you combine both logics and they're both 1 then that means the output is >0.                                                 
+    And(a=nng,b=nzr,out=nngnzr);
+    And(a=jgt,b=nngnzr,out=JGTcheck);
+    
+    // same logic as mentioned above for JGT and JEQ...
+    And(a=instruction[15],b=instruction[2],out=jlt);
+    And(a=jlt,b=ng,out=JLTcheck);
+
+    // check if any jump is required
+    Or(a=JGTcheck, b=JEQcheck, out=JGTJEQcheck);
+    Or(a=JGTJEQcheck, b=JLTcheck, out=JUMPif1);
+}

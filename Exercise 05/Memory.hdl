@@ -1,0 +1,49 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/Memory.hdl
+
+/**
+ * The complete address space of the Hack computer's memory,
+ * including RAM and memory-mapped I/O. 
+ * The chip facilitates read and write operations, as follows:
+ *     Read:  out(t) = Memory[address(t)](t)
+ *     Write: if load(t-1) then Memory[address(t-1)](t) = in(t-1)
+ * In words: the chip always outputs the value stored at the memory 
+ * location specified by address. If load==1, the in value is loaded 
+ * into the memory location specified by address. This value becomes 
+ * available through the out output from the next time step onward.
+ * Address space rules:
+ * Only the upper 16K+8K+1 words of the Memory chip are used. 
+ * Access to address>0x6000 is invalid. Access to any address in 
+ * the range 0x4000-0x5FFF results in accessing the screen memory 
+ * map. Access to address 0x6000 results in accessing the keyboard 
+ * memory map. The behavior in these addresses is described in the 
+ * Screen and Keyboard chip specifications given in the book.
+ */
+
+CHIP Memory {
+    IN in[16], load, address[15];
+    OUT out[16];
+
+    PARTS:
+
+    // check which compartment needs loading by the last 2 bits of the address.
+    DMux4Way(in=load, sel=address[13..14], a=ram16k1sthalf, b=ram16k2ndhalf, c=screenload, d=kbdmux);
+    
+    // if we're in 0-8191 or 8192-16383, combine load sel because it's the same compartment.
+    Or(a=ram16k1sthalf, b=ram16k2ndhalf, out=ram16kload);
+
+    // MSB doesn't matter because RAM16K goes from 0 to 16383, so address bits that are needed are only 0-13.
+    RAM16K(in=in, load=ram16kload, address=address[0..13], out=ram16kout);
+    
+    // Same explanation as for RAM16K, can discard last 2 bits of address.
+    Screen(in=in, load=screenload, address=address[0..12], out=screenout);
+
+    // Keyboard output saved, no loading needed.
+    Keyboard(out=kbdout);
+
+    // Using Mux4Way16 with the sel from previous gates to determine which inner-compartment to use as the final output.
+    Mux4Way16(a=ram16kout, b=ram16kout, c=screenout, d=kbdout, sel=address[13..14], out=out);
+
+}
