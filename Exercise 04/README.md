@@ -8,7 +8,7 @@ This exercise introduced the low-level machine language used throughout the Nand
 <br>
 This foundational understanding bridges the gap between high-level code and hardware execution, setting the stage for building an assembler and virtual machine in later assignments.
 <br><br>
-    <a href="https://github.com/ShayMorad/Intro-To-CS"><strong>« Return to Main Repository</strong></a>
+    <a href="https://github.com/ShayMorad/Nand2Tetris"><strong>« Return to Main Repository</strong></a>
     <br>
   </p>
 </div>
