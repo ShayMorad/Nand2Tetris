@@ -8,7 +8,7 @@ In this foundational exercise, I implemented basic logic gates (such as AND, OR,
 <br>
 This low-level, hardware-centric introduction laid the groundwork for constructing more advanced circuits in later stages of the course.
 <br><br>
-    <a href="https://github.com/ShayMorad/Intro-To-CS"><strong>« Return to Main Repository</strong></a>
+    <a href="https://github.com/ShayMorad/Nand2Tetris"><strong>« Return to Main Repository</strong></a>
     <br>
   </p>
 </div>
