@@ -8,7 +8,7 @@ In this exercise, I designed and implemented fundamental arithmetic circuits usi
 <br>
 These arithmetic chips form the computational backbone of digital systems and are essential for enabling binary addition and processing within a computer architecture.
 <br><br>
-    <a href="https://github.com/ShayMorad/Intro-To-CS"><strong>« Return to Main Repository</strong></a>
+    <a href="https://github.com/ShayMorad/Nand2Tetris"><strong>« Return to Main Repository</strong></a>
     <br>
   </p>
 </div>
